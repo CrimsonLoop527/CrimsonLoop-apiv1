@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrimsonLoop Steam Gateway V3.1 | ระบบเติมเกมอัตโนมัติ 24 ชม.</title>
+    <title>CrimsonLoop Steam Gateway V3.2 | ระบบเติมเกมอัตโนมัติ 24 ชม.</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -365,7 +365,7 @@
                             <input type="file" id="slip-file" accept="image/*" onchange="handleFileChange(this)" class="hidden">
                         </label>
                         
-                        <div class="text-[9px] text-gray-500 leading-normal">*ระบบจะยิงรูปภาพตรวจเช็คความถูกต้องผ่าน SlipOK API จริงตามคีย์ร้าน หากตรวจสอบไม่ผ่านพอยท์จะไม่เข้ากระเป๋า</div>
+                        <div class="text-[9px] text-gray-500 leading-normal">*ระบบจะยิงรูปภาพตรวจเช็คความถูกต้องผ่าน SlipOK Proxy โดยตรงเพื่อเลี่ยงปัญหาเบราว์เซอร์บล็อก</div>
                     </div>
 
                     <div class="bg-black/50 border border-neutral-900 rounded-xl p-3 text-[11px] text-left space-y-1.5">
@@ -405,6 +405,9 @@
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const TARGET_PROMPTPAY = "0983500245";
+        
+        // 🛠️ ปรับเปลี่ยน Endpoint โดยวิ่งผ่าน Allorigins Proxy เสรีเพื่อข้ามระบบตรวจจับ CORS ของบราวเซอร์หน้าบ้านให้ผ่าน 100% ฟรี
+        const PROXY_URL = "https://api.allorigins.win/raw?url=";
         const SLIPOK_URL = "https://api.slipok.com/api/line/apikey/68128";
         const SLIPOK_KEY = "SLIPOKFTU3EFW";
         const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1517125045028261950/G2OoG_ha36Q1nz5u_sSvtjwjRoi_lhsS1UGfj4TpiMMPnEdVXpHy-NMdOFiSbD5e9E-5";
@@ -811,7 +814,7 @@
         }
 
         // ==========================================
-        // 🚨 ระบบยิงตรวจเช็คผ่านโครงข่าย SLIPOK API ของจริง 100% 🚨
+        // 🚨 ระบบยิงตรวจเช็คผ่านโครงข่าย SLIPOK API แก้ไข CORS หน้าบ้าน 100% 🚨
         // ==========================================
         async function verifyPaymentAndUpdatePoints() {
             if(isSystemBanned) { alertSystemBanned(); return; }
@@ -825,52 +828,50 @@
             }
 
             Swal.fire({ 
-                title: 'กำลังยิงตรวจสลิปผ่านค่าย SLIPOK...', 
-                html: 'เซิร์ฟเวอร์กำลังส่งข้อมูลรูปภาพไปตรวจสอบความถูกต้องจริงที่ศูนย์เครือข่ายธนาคาร...', 
+                title: 'กำลังตรวจสอบสลิปผ่านทางด่วน API...', 
+                html: 'กำลังส่งตรวจข้อมูลรูปภาพผ่านสะพานเชื่อม Proxy เพื่อทะลวงบล็อก CORS ไปยังธนาคาร...', 
                 background: '#070208', 
                 allowOutsideClick: false, 
                 didOpen: () => Swal.showLoading() 
             });
 
             try {
-                // ทำการตัดสายแปลง Base64 เอาเฉพาะ Data ชิ้นเนื้อรูปภาพส่งไปให้ API
                 const cleanBase64 = base64SlipImage.split(',')[1];
 
-                // ยิงคำขอไปที่ End-Point ของ SlipOK
-                const response = await fetch(SLIPOK_URL, {
+                // ยิงอ้อมผ่าน AllOrigins Proxy Server เคลียร์เงื่อนไขพอร์ตเบราว์เซอร์ให้ฉลุยฟรีไม่ต้องเช่าเซิร์ฟ
+                const targetEndpoint = PROXY_URL + encodeURIComponent(SLIPOK_URL);
+
+                const response = await fetch(targetEndpoint, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "x-authorization": SLIPOK_KEY
                     },
                     body: JSON.stringify({
-                        log: true, // บันทึกประวัติสลิปกันใช้งานซ้ำบน Cloud SlipOK
+                        log: true, 
                         data: cleanBase64
                     })
                 });
 
                 const result = await response.json();
 
-                // ตรวจเช็คว่า API คืนสถานะสำเร็จ และอ่านค่าสลิปได้หรือไม่
                 if (!response.ok || !result.success || !result.data) {
-                    throw new Error(result.message || "ภาพสลิปไม่ถูกต้อง หรือไม่สามารถอ่าน QR Code บนสลิปได้");
+                    throw new Error(result.message || "ภาพหลักฐานสลิปไม่สมบูรณ์ หรือไม่สามารถสแกนบาร์โค้ดบนสลิปใบนี้ได้");
                 }
 
                 const slipData = result.data;
 
-                // 🛡️ ระบบตรวจสอบเงื่อนไขความถูกต้องด่านตรวจโกง:
-                // 1. ตรวจสอบว่าจำนวนเงินบนสลิป ตรงกับแพ็กเกจที่เลือกหรือไม่
+                // ตรวจเช็คความถูกต้องของเงินและเบอร์รับเงินโอน
                 if (parseFloat(slipData.amount) !== parseFloat(currentSelectedAmount)) {
-                    throw new Error(`ยอดเงินโอนในสลิปไม่ตรงกับแพ็กเกจ! (ในสลิปโอนมา ${slipData.amount} บาท แต่เลือกเรทราคาไว้ ${currentSelectedAmount} บาท)`);
+                    throw new Error(`ยอดเงินบนสลิปไม่ตรงตามเรทที่คุณเลือกไว้! (สลิปนี้มียอดโอน ${slipData.amount} บาท)`);
                 }
 
-                // 2. ตรวจสอบข้อมูลเบอร์ผู้รับเงินปลายทาง (ต้องเป็นเบอร์พร้อมเพย์ของคุณเท่านั้น)
                 const receiverInfo = slipData.receiver.proxy.value.replace(/-/g, "");
                 if (!receiverInfo.includes(TARGET_PROMPTPAY)) {
-                    throw new Error("สลิปนี้ไม่ได้โอนเงินเข้าบัญชีพร้อมเพย์ของทางร้าน CrimsonLoop!");
+                    throw new Error("สลิปใบนี้ไม่ได้โอนยอดเงินเข้าบัญชีพร้อมเพย์ของทางร้านหลักครับ!");
                 }
 
-                // สลิปถูกต้องจริง -> ทำการอัปเดตเพิ่มแต้มลงฐานข้อมูล Supabase
+                // ผ่านฉลุย -> ดึงค่าไปอัปเดตแต้มพอยท์บน Supabase ทันที
                 const { data: userRefresh } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
                 const livePoints = userRefresh ? parseInt(userRefresh.points) : parseInt(currentUser.points);
                 const finalPoints = livePoints + currentAddPoints;
@@ -880,21 +881,20 @@
 
                 currentUser.points = finalPoints;
                 document.getElementById('user-points-display').innerText = currentUser.points.toLocaleString();
-                failedSlipAttempts = 0; // รีเซ็ตแต้มหากทำรายการผ่าน
+                failedSlipAttempts = 0; 
 
                 updateLogs('เติมเครดิตผ่านคิวอาร์โอน', `รับพอยท์จำนวน +${currentAddPoints.toLocaleString()} PTS (ยอดชำระยอด ${currentSelectedAmount.toLocaleString()} บ.)`);
 
                 Swal.fire({ 
                     icon: 'success', 
-                    title: 'SlipOK ยืนยันสมบูรณ์!', 
-                    html: `บอทประมวลผลอ่านสลิปสำเร็จจริง! ทำการเพิ่มพอยท์เครดิตกระเป๋าให้คุณแล้ว <b class="text-emerald-400 font-tech">+${currentAddPoints.toLocaleString()} PTS</b>`, 
+                    title: 'สแกนสำเร็จ พอยท์เข้าแล้ว!', 
+                    html: `บอท SlipOK ตรวจสอบประวัติจริงผ่านระบบข้าม CORS สำเร็จ เพิ่มเครดิตแล้ว <b class="text-emerald-400 font-tech">+${currentAddPoints.toLocaleString()} PTS</b>`, 
                     background: '#04120a', 
                     confirmButtonColor: '#10b981' 
                 });
                 clearSelections();
 
             } catch (err) {
-                // นับจำนวนครั้งที่สลิปผิดพลาด/ปลอม
                 failedSlipAttempts++;
                 if(failedSlipAttempts > 2) {
                     isSystemBanned = true;
@@ -904,7 +904,7 @@
                 
                 Swal.fire({ 
                     icon: 'error', 
-                    title: 'ตรวจสอบหลักฐานล้มเหลว', 
+                    title: 'ด่านตรวจเช็คสลิปไม่ผ่าน', 
                     text: err.message, 
                     background: '#120a0e',
                     confirmButtonColor: '#ef4444'
@@ -989,7 +989,7 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'เช่าใช้งานเปิดพอร์ตสำเร็จ!',
-                    html: `สิทธิ์การเข้าดึงโครงข่าย: <b class="text-emerald-400">${currentRentName}</b> ถูกผูกติดกับบัญชีคุณเพื่อเปิดต่อยอดทำกำไรเรียบร้อยแล้วครับ!`,
+                    html: `สิทธิ์การเข้าดึงโครงข่าย: <b class="text-emerald-400">${currentRentName}</b> ถูกผุกติดกับบัญชีคุณเพื่อเปิดต่อยอดทำกำไรเรียบร้อยแล้วครับ!`,
                     background: '#04120a',
                     confirmButtonColor: '#10b981'
                 });
