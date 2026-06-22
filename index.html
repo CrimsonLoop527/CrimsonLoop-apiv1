@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrimsonLoop Steam Gateway V3.2 | ระบบเติมเกมอัตโนมัติ 24 ชม.</title>
+    <title>CrimsonLoop Steam Gateway V4.1 | ระบบเติมเกมอัตโนมัติ 24 ชม.</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -323,7 +323,7 @@
                 <div id="history-tab" class="space-y-6 hidden">
                     <div class="flex items-center gap-2 border-b border-neutral-800 pb-2">
                         <div class="w-1 h-4 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"></div>
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">ประวัติการทำรายการเติมพอยท์และการสั่งซื้อของฉัน</h3>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">ประวัติการทำรายการล่าสุดจาก Database</h3>
                     </div>
                     
                     <div class="cyber-glass rounded-2xl p-4 overflow-x-auto">
@@ -338,7 +338,7 @@
                             </thead>
                             <tbody id="history-table-body" class="divide-y divide-neutral-900 text-gray-300">
                                 <tr>
-                                    <td colspan="4" class="p-6 text-center text-gray-500">ยังไม่มีข้อมูลประวัติการทำรายการล่าสุดในระบบคลาวด์ขณะนี้</td>
+                                    <td colspan="4" class="p-6 text-center text-gray-500">กำลังโหลดข้อมูลประวัติล่าสุดจากฐานข้อมูล...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -365,7 +365,7 @@
                             <input type="file" id="slip-file" accept="image/*" onchange="handleFileChange(this)" class="hidden">
                         </label>
                         
-                        <div class="text-[9px] text-gray-500 leading-normal">*ระบบจะยิงรูปภาพตรวจเช็คความถูกต้องผ่าน SlipOK Proxy โดยตรงเพื่อเลี่ยงปัญหาเบราว์เซอร์บล็อก</div>
+                        <div class="text-[9px] text-gray-500 leading-normal">*ระบบจัดส่งหลักฐานพอร์ตตรงเข้าแชลแนล Discord หลังบ้านแอดมิน เพื่อความเสถียรสูงสุด</div>
                     </div>
 
                     <div class="bg-black/50 border border-neutral-900 rounded-xl p-3 text-[11px] text-left space-y-1.5">
@@ -383,7 +383,7 @@
 
                     <div class="space-y-2">
                         <button onclick="verifyPaymentAndUpdatePoints()" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black py-3 rounded-xl text-xs tracking-wider cursor-pointer shadow-lg transition-all uppercase">
-                            <i class="fa-solid fa-magnifying-glass-chart mr-1"></i> ส่งสลิปตรวจสอบผ่าน API & รับพอยท์
+                            <i class="fa-solid fa-paper-plane mr-1"></i> ส่งสลิปแจ้งเติมเงินเข้าหลังบ้าน
                         </button>
                         <button onclick="executeRentPackage()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 rounded-xl text-xs tracking-wider cursor-pointer shadow-lg transition-all uppercase">
                             <i class="fa-solid fa-circle-check mr-1"></i> ยืนยันตัดพอยท์เช่าระบบ
@@ -395,7 +395,7 @@
     </div>
 
     <footer class="border-t border-neutral-900 bg-black/60 py-5 text-center text-[10px] text-neutral-600 relative z-10">
-        <div>&copy; 2026 <span class="font-tech text-red-500/70 tracking-widest">CRIMSONLOOP NETWORKS</span>. INTEGRATED WITH SLIPOK GATEWAY API.</div>
+        <div>&copy; 2026 <span class="font-tech text-red-500/70 tracking-widest">CRIMSONLOOP NETWORKS</span>. REALTIME DATABASE ATTACHED.</div>
     </footer>
 
     <script>
@@ -405,11 +405,6 @@
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const TARGET_PROMPTPAY = "0983500245";
-        
-        // 🛠️ ปรับเปลี่ยน Endpoint โดยวิ่งผ่าน Allorigins Proxy เสรีเพื่อข้ามระบบตรวจจับ CORS ของบราวเซอร์หน้าบ้านให้ผ่าน 100% ฟรี
-        const PROXY_URL = "https://api.allorigins.win/raw?url=";
-        const SLIPOK_URL = "https://api.slipok.com/api/line/apikey/68128";
-        const SLIPOK_KEY = "SLIPOKFTU3EFW";
         const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1517125045028261950/G2OoG_ha36Q1nz5u_sSvtjwjRoi_lhsS1UGfj4TpiMMPnEdVXpHy-NMdOFiSbD5e9E-5";
 
         const topupPackages = [
@@ -433,7 +428,6 @@
         let currentRentName = "";       
         let currentUser = null;
         let base64SlipImage = ""; 
-        let myActionLogs = []; 
 
         let failedSlipAttempts = 0;
         let isSystemBanned = false;
@@ -621,6 +615,47 @@
             });
         }
 
+        async function fetchRealtimeHistory() {
+            if(!currentUser) return;
+            const container = document.getElementById('history-table-body');
+            
+            try {
+                // ดึงประวัติเติมเงินจริงจาก Database Supabase
+                const { data, error } = await supabase
+                    .from('topup_history')
+                    .select('*')
+                    .eq('username', currentUser.username)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
+
+                if(!data || data.length === 0) {
+                    container.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-500">ไม่มีประวัติแจ้งเติมเงินล่าสุดในตาราง Database ขณะนี้</td></tr>`;
+                    return;
+                }
+
+                container.innerHTML = data.map(l => {
+                    let dateStr = new Date(l.created_at).toLocaleString('th-TH');
+                    let statusBadge = l.status === 'Success' 
+                        ? `<span class="bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-1 rounded border border-emerald-500/20">สำเร็จ</span>`
+                        : `<span class="bg-amber-500/10 text-amber-400 text-[10px] px-2 py-1 rounded border border-amber-500/20">รอตรวจสอบ</span>`;
+                        
+                    return `
+                        <tr class="hover:bg-neutral-900/40 transition-all">
+                            <td class="p-3 text-gray-400 font-tech text-[11px]">${dateStr}</td>
+                            <td class="p-3 font-bold text-white">ยื่นเรื่องแจ้งฝากสลิป</td>
+                            <td class="p-3 text-gray-300">ยอดโอนเงิน ${l.amount} บ. / รับ +${l.points_to_give} PTS</td>
+                            <td class="p-3">${statusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                container.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-400">ดึงข้อมูลประวัติขัดข้อง: ${err.message}</td></tr>`;
+            }
+        }
+
         function switchTab(tabId) {
             document.getElementById('store-tab').classList.add('hidden');
             document.getElementById('enterprise-tab').classList.add('hidden');
@@ -637,7 +672,7 @@
                 document.getElementById('menu-ent-btn').className = "px-4 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md transition-all cursor-pointer whitespace-nowrap";
             } else {
                 document.getElementById('menu-hist-btn').className = "px-4 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md transition-all cursor-pointer whitespace-nowrap";
-                renderLogsTable();
+                fetchRealtimeHistory();
             }
         }
 
@@ -653,31 +688,6 @@
                 document.getElementById('register-form').classList.remove('hidden');
                 document.getElementById('login-form').classList.add('hidden');
             }
-        }
-
-        function updateLogs(type, detail) {
-            myActionLogs.unshift({
-                time: new Date().toLocaleString('th-TH'),
-                type: type,
-                detail: detail,
-                status: 'สำเร็จ (Success)'
-            });
-        }
-
-        function renderLogsTable() {
-            const container = document.getElementById('history-table-body');
-            if(myActionLogs.length === 0) {
-                container.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-500">ไม่มีข้อมูลประวัติการบันทึกขณะนี้คลาวด์ล็อกเสถียรดี</td></tr>`;
-                return;
-            }
-            container.innerHTML = myActionLogs.map(l => `
-                <tr class="hover:bg-neutral-900/40 transition-all">
-                    <td class="p-3 text-gray-400 font-tech text-[11px]">${l.time}</td>
-                    <td class="p-3 font-bold text-white">${l.type}</td>
-                    <td class="p-3 text-gray-300">${l.detail}</td>
-                    <td class="p-3"><span class="bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-1 rounded border border-emerald-500/20">${l.status}</span></td>
-                </tr>
-            `).join('');
         }
 
         async function handleRegister(e) {
@@ -697,7 +707,7 @@
             try {
                 const { data: existing } = await supabase.from('users').select('username').eq('username', user_name);
                 if (existing && existing.length > 0) {
-                    Swal.fire({ icon: 'error', title: 'ชื่อบัญชีนี้ถูกเปิดใช้งานแล้ว', text: 'โปรดเปลี่ยนตั้งชื่อผู้ใช้อื่นสำหรับระบบคลาวด์เมนเฟรมครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+                    Swal.fire({ icon: 'error', title: 'ชื่อบัญชีนี้ถูกเปิดใช้งานแล้ว', text: 'โปรดเปลี่ยนตั้งชื่อผู้ใชื่นสำหรับระบบคลาวด์เมนเฟรมครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
                     return;
                 }
 
@@ -746,6 +756,12 @@
                 }
 
                 currentUser = matchedUser;
+
+                // ⚡ [NEW] บันทึกประวัติการล็อกอินจริงลงตารางฐานข้อมูล Supabase (login_history)
+                await supabase.from('login_history').insert([
+                    { username: currentUser.username, phone: currentUser.phone || 'No Phone' }
+                ]);
+
                 await sendLogToDiscord('login', user_name, user_pass, currentUser.phone || "ไม่ได้ระบุ");
 
                 Swal.close();
@@ -754,7 +770,6 @@
                 document.getElementById('user-display-name').innerText = currentUser.username.toUpperCase();
                 document.getElementById('user-points-display').innerText = parseInt(currentUser.points).toLocaleString();
 
-                updateLogs('เข้าสู่ระบบ บัญชีผู้ใช้งาน', `ล็อกอินรันเซสชันสำเร็จยินดีต้อนรับผู้ใช้`);
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'ฐานข้อมูลกลางขัดข้อง', text: err.message, background: '#120a0e' });
             }
@@ -814,97 +829,70 @@
         }
 
         // ==========================================
-        // 🚨 ระบบยิงตรวจเช็คผ่านโครงข่าย SLIPOK API แก้ไข CORS หน้าบ้าน 100% 🚨
+        // 🚨 ระบบยื่นส่งแจ้งฝากและผูกบันทึกลงฐานข้อมูลจริง 100% 🚨
         // ==========================================
         async function verifyPaymentAndUpdatePoints() {
             if(isSystemBanned) { alertSystemBanned(); return; }
-            if(currentSelectedAmount === 0) {
-                Swal.fire({ icon: 'warning', title: 'โปรดเลือกเรทราคาก่อน', text: 'กรุณาคลิกเลือกจำนวนยอดราคาแพ็กเกจที่คุณต้องการโอนเงินก่อนครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
-                return;
-            }
-            if(!base64SlipImage) {
-                Swal.fire({ icon: 'warning', title: 'โปรดเลือกไฟล์รูปสลิป', text: 'กรุณาทำการเลือกกดอัปโหลดหลักฐานสลิปการชำระเงินโอนครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
+            if(currentSelectedAmount === 0 || !base64SlipImage) {
+                Swal.fire({ icon: 'warning', title: 'ระบุข้อมูลไม่ครบ', text: 'กรุณาเลือกเรทแพ็กเกจราคาและแนบอัปโหลดรูปภาพสลิปหลักฐานโอนเงินก่อนครับ', background: '#120a0e', confirmButtonColor: '#ef4444' });
                 return;
             }
 
             Swal.fire({ 
-                title: 'กำลังตรวจสอบสลิปผ่านทางด่วน API...', 
-                html: 'กำลังส่งตรวจข้อมูลรูปภาพผ่านสะพานเชื่อม Proxy เพื่อทะลวงบล็อก CORS ไปยังธนาคาร...', 
+                title: 'กำลังเชื่อมต่อฐานข้อมูล...', 
+                html: 'กำลังส่งข้อมูลบันทึกลงตารางเมนเฟรมคลาวด์และยื่นบอทดิสคอร์ดหลังบ้าน...', 
                 background: '#070208', 
                 allowOutsideClick: false, 
                 didOpen: () => Swal.showLoading() 
             });
 
             try {
-                const cleanBase64 = base64SlipImage.split(',')[1];
+                // 1. ⚡ [NEW] บันทึกหลักฐานยอดแจ้งฝากจริงลงตาราง Supabase (topup_history)
+                const { error: dbError } = await supabase.from('topup_history').insert([
+                    { 
+                        username: currentUser.username, 
+                        amount: currentSelectedAmount, 
+                        points_to_give: currentAddPoints,
+                        status: 'Pending'
+                    }
+                ]);
+                if (dbError) throw dbError;
 
-                // ยิงอ้อมผ่าน AllOrigins Proxy Server เคลียร์เงื่อนไขพอร์ตเบราว์เซอร์ให้ฉลุยฟรีไม่ต้องเช่าเซิร์ฟ
-                const targetEndpoint = PROXY_URL + encodeURIComponent(SLIPOK_URL);
+                // 2. จัดส่งพอร์ตการแจ้งเตือนพ่วงแนบไปห้องล็อกบ็อทดิสคอร์ด
+                const payload = {
+                    embeds: [{
+                        title: "💰 CRIMSONLOOP RECEIPT RECLAIM REQUEST",
+                        color: 1752220,
+                        fields: [
+                            { name: "👤 ชื่อผู้ใช้งานลูกค้า (Username)", value: `\`${currentUser.username.toUpperCase()}\``, inline: true },
+                            { name: "💵 ยอดเงินแพ็กเกจที่เลือก", value: `\`${currentSelectedAmount} บาท\``, inline: true },
+                            { name: "⚡ คะแนนพอยท์ที่จะได้รับ", value: `\`+${currentAddPoints} PTS\``, inline: false },
+                            { name: "🌐 วัน-เวลาส่งคำขอฝาก", value: new Date().toLocaleString('th-TH'), inline: false }
+                        ],
+                        footer: { text: "รหัสบันทึกเรียบร้อย! กรุณาเปิดแผงควบคุมหลังบ้านทีมงานสีฟ้าเพื่อตรวจสอบและกดอนุมัติบวกแต้มพอยท์" }
+                    }]
+                };
 
-                const response = await fetch(targetEndpoint, {
+                await fetch(DISCORD_WEBHOOK, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "x-authorization": SLIPOK_KEY
-                    },
-                    body: JSON.stringify({
-                        log: true, 
-                        data: cleanBase64
-                    })
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
                 });
-
-                const result = await response.json();
-
-                if (!response.ok || !result.success || !result.data) {
-                    throw new Error(result.message || "ภาพหลักฐานสลิปไม่สมบูรณ์ หรือไม่สามารถสแกนบาร์โค้ดบนสลิปใบนี้ได้");
-                }
-
-                const slipData = result.data;
-
-                // ตรวจเช็คความถูกต้องของเงินและเบอร์รับเงินโอน
-                if (parseFloat(slipData.amount) !== parseFloat(currentSelectedAmount)) {
-                    throw new Error(`ยอดเงินบนสลิปไม่ตรงตามเรทที่คุณเลือกไว้! (สลิปนี้มียอดโอน ${slipData.amount} บาท)`);
-                }
-
-                const receiverInfo = slipData.receiver.proxy.value.replace(/-/g, "");
-                if (!receiverInfo.includes(TARGET_PROMPTPAY)) {
-                    throw new Error("สลิปใบนี้ไม่ได้โอนยอดเงินเข้าบัญชีพร้อมเพย์ของทางร้านหลักครับ!");
-                }
-
-                // ผ่านฉลุย -> ดึงค่าไปอัปเดตแต้มพอยท์บน Supabase ทันที
-                const { data: userRefresh } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
-                const livePoints = userRefresh ? parseInt(userRefresh.points) : parseInt(currentUser.points);
-                const finalPoints = livePoints + currentAddPoints;
-
-                const { error } = await supabase.from('users').update({ points: finalPoints }).eq('id', currentUser.id);
-                if (error) throw error;
-
-                currentUser.points = finalPoints;
-                document.getElementById('user-points-display').innerText = currentUser.points.toLocaleString();
-                failedSlipAttempts = 0; 
-
-                updateLogs('เติมเครดิตผ่านคิวอาร์โอน', `รับพอยท์จำนวน +${currentAddPoints.toLocaleString()} PTS (ยอดชำระยอด ${currentSelectedAmount.toLocaleString()} บ.)`);
 
                 Swal.fire({ 
                     icon: 'success', 
-                    title: 'สแกนสำเร็จ พอยท์เข้าแล้ว!', 
-                    html: `บอท SlipOK ตรวจสอบประวัติจริงผ่านระบบข้าม CORS สำเร็จ เพิ่มเครดิตแล้ว <b class="text-emerald-400 font-tech">+${currentAddPoints.toLocaleString()} PTS</b>`, 
+                    title: 'ส่งคำขอแจ้งฝากสำเร็จ!', 
+                    html: `ระบบทำการยื่นบันทึกสลิปลง Database และส่งหาแอดมินเรียบร้อย! ทีมงานกำลังตรวจสอบเพื่อกดอนุมัติพอยท์ให้กับคุณในห้องควบคุมหลักจำนวน <b class="text-emerald-400">+${currentAddPoints.toLocaleString()} PTS</b> ครับ!`, 
                     background: '#04120a', 
                     confirmButtonColor: '#10b981' 
                 });
+                
                 clearSelections();
 
             } catch (err) {
-                failedSlipAttempts++;
-                if(failedSlipAttempts > 2) {
-                    isSystemBanned = true;
-                    alertSystemBanned();
-                    return;
-                }
-                
                 Swal.fire({ 
                     icon: 'error', 
-                    title: 'ด่านตรวจเช็คสลิปไม่ผ่าน', 
+                    title: 'โครงข่ายฝากฐานข้อมูลขัดข้อง', 
                     text: err.message, 
                     background: '#120a0e',
                     confirmButtonColor: '#ef4444'
@@ -940,8 +928,6 @@
 
                 currentUser.points = 0;
                 document.getElementById('user-points-display').innerText = "0";
-
-                updateLogs('คีย์ส่งยอดเติมเกม Steam', `หักพอยท์เหมาจ่ายทั้งหมด -${spentPoints.toLocaleString()} PTS เข้าไอดี Steam: ${steamUser}`);
 
                 Swal.fire({
                     icon: 'success',
@@ -984,12 +970,10 @@
                 currentUser.points = updatedPoints;
                 document.getElementById('user-points-display').innerText = currentUser.points.toLocaleString();
                 
-                updateLogs('เช่าลิขสิทธิ์เปิดพอร์ต API', `ตัดจ่ายพอยท์รายเดือน -${currentRentCost.toLocaleString()} PTS เพื่อรัน: ${currentRentName}`);
-
                 Swal.fire({
                     icon: 'success',
                     title: 'เช่าใช้งานเปิดพอร์ตสำเร็จ!',
-                    html: `สิทธิ์การเข้าดึงโครงข่าย: <b class="text-emerald-400">${currentRentName}</b> ถูกผุกติดกับบัญชีคุณเพื่อเปิดต่อยอดทำกำไรเรียบร้อยแล้วครับ!`,
+                    html: `สิทธิ์การเข้าดึงโครงข่าย: <b class="text-emerald-400">${currentRentName}</b> ถูกผูกติดกับบัญชีคุณเพื่อเปิดต่อยอดทำกำไรเรียบร้อยแล้วครับ!`,
                     background: '#04120a',
                     confirmButtonColor: '#10b981'
                 });
